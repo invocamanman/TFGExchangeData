@@ -173,7 +173,7 @@ this.state.factory.once('allEvents', {
    
   // }
     
-  async Startcomunication(message){
+  async Startcomunication(){
     
     console.log(this.state.addrescontract)
     let sign = await this.state.web3.eth.personal.sign(this.state.addrescontract, this.state.account,'')//password nose necesita, aún así se debe complementar
