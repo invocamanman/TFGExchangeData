@@ -7,8 +7,6 @@ import ExchangesC from './Exchanges'
 import { Form,Button } from 'react-bootstrap';
 import {MerkleTreeLibrary, zip, genIntSequence} from './resources/merkletreelib'
 //import { Buffer } from 'buffer';
-var AES = require("crypto-js/aes");
-var SHA256 = require("crypto-js/sha256");
 var CryptoJS = require("crypto-js");
 
 var FileSaver = require('file-saver');
@@ -42,6 +40,10 @@ class Apprueba extends Component {
     this.CreateRandomIndex = this.CreateRandomIndex.bind(this);
     this.comprobe = this.comprobe.bind(this);
     this.decrypt = this.decrypt.bind(this);
+    this.Cancel = this.Cancel.bind(this);
+    this.Startcomunicationfake = this.Startcomunicationfake.bind(this);
+    this.seedRevealFake = this.seedRevealFake.bind(this);
+  
   }
   
   componentWillMount(){
@@ -67,7 +69,6 @@ class Apprueba extends Component {
 
     const factory= new web3.eth.Contract ( FACTORY_ABI,FACTORY_ADDRESS)
     this.setState({factory})
-
     
 
     //let Exchangedata= new web3.eth.Contract ( EXCHANGEDATA_ABI, '0xA6b9FA6336Bbe5280E9492aa1Da318a33ecB3Bd3')
@@ -104,20 +105,51 @@ class Apprueba extends Component {
 
   }
 
+  Cancel(){
+//
+    this.state.Exchangedata.methods.Cancel().send({from: this.state.account}).on('transactionHash', txHash => {
+      console.log('on transactionHash', txHash);
+    })
+    .on('receipt', receipt=> {
 
+    console.log('on receipt', receipt);
+    this.state.Exchangedata.methods.stage.call().then(function(stage){
+      console.log(stage)
+      this.setState({stage})
+    }.bind(this));
+    this.state.web3.eth.getBalance(this.state.addrescontract).then(function(balance){
+      console.log("then", this.state.web3.utils.fromWei(balance,'ether'))
+    }.bind(this));
+
+
+    })
+    .on('confirmation', (confirmationNumber, receipt) => {
+      console.log('on confirmation', confirmationNumber);
+    })
+    .on('error', error=> {
+    console.log('on error', error);
+    })
+
+    
+}
 
   loadExchanges(){
     console.log(this.state.stage,this.state.consumer,this.state.provider)
     if(this.state.consumer)
     return  <ExchangesC addrescontract={this.state.addrescontract} 
-     Startcomunication= {this.Startcomunication} confirm= {this.confirm} seedReveal= {this.seedReveal} conflict= {this.conflict} stage={this.state.stage} 
-     consumer={this.state.consumer} provider={this.state.provider} comprobe={this.comprobe} decrypt= {this.decrypt} CreateRandomIndex={this.CreateRandomIndex}/>
+     Startcomunication= {this.Startcomunication}  Startcomunicationfake= {this.Startcomunicationfake} confirm= {this.confirm} seedReveal= {this.seedReveal} seedRevealFake= {this.seedRevealFake} conflict= {this.conflict} stage={this.state.stage} 
+     consumer={this.state.consumer} provider={this.state.provider} comprobe={this.comprobe} decrypt= {this.decrypt} CreateRandomIndex={this.CreateRandomIndex} Cancel={this.Cancel}/>
   }
   async Createnewexchange(){
 
     // let result =await  this.state.factory.methods.createChildContract(this.state.valuenewexchange).send({from: this.state.account});
     //   console.log("result", result)
-    this.state.factory.methods.createChildContract().send({from: this.state.account, value: this.state.web3.utils.toWei("5", "ether")})//asi continua el codigo en caso de BC real ^^
+    let price = await this.state.factory.methods.p.call()
+    let collateral= await this.state.factory.methods.collateral.call()
+    let total = parseInt(price)+parseInt(collateral)
+    console.log(total);
+
+    this.state.factory.methods.createChildContract().send({from: this.state.account, value: total})//asi continua el codigo en caso de BC real ^^
     .on('transactionHash', txHash => {
       console.log('on transactionHash', txHash);
   })
@@ -128,9 +160,15 @@ class Apprueba extends Component {
     console.log(receipt.events.SCcreated.returnValues.exchangedata)//??????
    // this.setState({addrescontract:receipt.events.SCcreated.returnValues.exchangedata})
     this.addresscheck(receipt.events.SCcreated.returnValues.exchangedata)
+
+    this.state.web3.eth.getBalance(receipt.events.SCcreated.returnValues.exchangedata).then(function(balance){
+      console.log("then", this.state.web3.utils.fromWei(balance,'ether'))
+    }.bind(this));
+
 })
   .on('confirmation', (confirmationNumber, receipt) => {
       console.log('on confirmation', confirmationNumber);
+      
   })
   .on('error', error=> {
     console.log('on error', error);
@@ -176,14 +214,15 @@ this.state.factory.once('allEvents', {
   async Startcomunication(){
     
     console.log(this.state.addrescontract)
-    let sign = await this.state.web3.eth.personal.sign(this.state.addrescontract, this.state.account,'')//password nose necesita, aún así se debe complementar
+    let message = "La address del SC es: "+this.state.addrescontract
+    let sign = await this.state.web3.eth.personal.sign(message, this.state.account,'')//password nose necesita, aún así se debe complementar
     fetch("http://localhost:9000/testAPI/id",{
     method: 'POST',
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({addrescontract: this.state.addrescontract, sign:sign})//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+    body: JSON.stringify({addrescontract: this.state.addrescontract, sign:sign, message:message})//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
   }).then(function(response) {//comprobar que sea un 200 OK
     
     return response.json();//.json() .text()
@@ -193,6 +232,29 @@ this.state.factory.once('allEvents', {
      FileSaver.saveAs(blob, "cryptos.txt");
   });
  
+}
+
+async Startcomunicationfake(){
+    
+  console.log(this.state.addrescontract)
+  let message = "La address del SC es: "+this.state.addrescontract
+  let sign = await this.state.web3.eth.personal.sign(message, this.state.account,'')//password nose necesita, aún así se debe complementar
+  fetch("http://localhost:9000/testAPI/idfake",{
+  method: 'POST',
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({addrescontract: this.state.addrescontract, sign:sign, message:message})//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+}).then(function(response) {//comprobar que sea un 200 OK
+  
+  return response.json();//.json() .text()
+}).then(function(data) {
+  console.log(data)
+   var blob = new Blob([JSON.stringify(data)], {type: "text/plain;charset=utf-8"});
+   FileSaver.saveAs(blob, "cryptos.txt");
+});
+
 }
 
 shuffle(array) {
@@ -218,15 +280,15 @@ shuffle(array) {
 
   async Testdownload(){
     
-    let response = await fetch("http://localhost:9000/testAPI/test",{
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({a:1})//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-  });
- 
+  //   let response = await fetch("http://localhost:9000/testAPI/test",{
+  //   method: 'POST',
+  //   headers: {
+  //     'Accept': 'application/json',
+  //     'Content-Type': 'application/json'
+  //   },
+  //   body: JSON.stringify({a:1})//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+  // });
+  
 
 
 }
@@ -280,7 +342,7 @@ async comprobe(cryptos, keys, proofs, index){
   let merkleRootCrypto = tree.root;
   console.log({merkleRootCrypto})
 
-  console.log(merkleRootCrypto==MRC)
+  console.log(merkleRootCrypto===MRC)
 
   let verifyproofs = []
   zip(keys, proofs).map(async ([key, proof]) => {
@@ -297,12 +359,12 @@ async comprobe(cryptos, keys, proofs, index){
         // var bytes  = CryptoJS.AES.decrypt(ciphertext.toString(), 'secret key 123');
         // console.log(bytes.toString(CryptoJS.enc.Utf8));
 
-   if( verifyproofs.some(element => element==false))
+   if( verifyproofs.some(element => element===false)||merkleRootCrypto!==MRC)
    {
-    window.alert("todo mal")
+    window.alert("Las roots de la Blockchain no coinciden con los ficheros, se recomienda encarecídamente que cancele el trato ")
    }
    else {
-    window.alert("todo guay")
+    window.alert("Comprobaciones realizadas, todo correcto")
     let cryptostodesencrypt= []
     index.forEach(element => {
       cryptostodesencrypt.push(cryptos[element])
@@ -311,6 +373,7 @@ async comprobe(cryptos, keys, proofs, index){
     zip(cryptostodesencrypt, keys).map(([crypto, key]) => {
         var bytes  = CryptoJS.AES.decrypt(crypto, bufferToHex(key).toString());
         desencrypteddata.push(bytes.toString(CryptoJS.enc.Utf8));
+        return null;
      })
      console.log(desencrypteddata)
      var blob = new Blob([JSON.stringify(desencrypteddata)], {type: "text/plain;charset=utf-8"});
@@ -330,8 +393,14 @@ async decrypt(cryptos){
 
     let desencrypteddata= []
     zip(cryptos, keys).map(([crypto, key]) => {
-      var bytes  = CryptoJS.AES.decrypt(crypto, bufferToHex(key).toString());
-      desencrypteddata.push(bytes.toString(CryptoJS.enc.Utf8));
+      try{
+        var bytes  = CryptoJS.AES.decrypt(crypto, bufferToHex(key).toString());
+        desencrypteddata.push(bytes.toString(CryptoJS.enc.Utf8));
+      }
+      catch{
+        desencrypteddata.push(bytes.toString());
+      }       
+      return null;
    })
    var blob = new Blob([JSON.stringify(desencrypteddata)], {type: "text/plain;charset=utf-8"});
      FileSaver.saveAs(blob, "alldata.txt");
@@ -384,8 +453,36 @@ async decrypt(cryptos){
   }.bind(this))
   }
   
-  async conflict(){
+  async seedRevealFake()  {
 
+    fetch("http://localhost:9000/testAPI/releasefake",{
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({address: this.state.addrescontract})//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+  }).then(function(response) {
+    
+    return response.text();//.json()
+  }).then(function(data) {
+    console.log(data)
+
+    this.state.Exchangedata.methods.stage.call().then(function(stage){
+     console.log(stage)
+     this.setState({stage})
+
+     }.bind(this));
+}.bind(this))
+}
+
+  async conflict(){
+    let provider = await this.state.Exchangedata.methods.provider.call();
+    let consumer = await this.state.Exchangedata.methods.consumer.call();
+    let balancewei= await this.state.web3.eth.getBalance(this.state.addrescontract);
+    let balance = this.state.web3.utils.fromWei(balancewei,'ether')
+    console.log("before:", {provider, consumer, balance})
+//
     this.state.Exchangedata.methods.conflict().send({from: this.state.account}).on('transactionHash', txHash => {
       console.log('on transactionHash', txHash);
   })
@@ -398,6 +495,11 @@ async decrypt(cryptos){
       this.setState({stage})
 
     }.bind(this));
+
+    this.state.web3.eth.getBalance(this.state.addrescontract).then(function(balance){
+      console.log("then", this.state.web3.utils.fromWei(balance,'ether'))
+    }.bind(this));
+   
 
 })
   .on('confirmation', (confirmationNumber, receipt) => {
@@ -451,7 +553,7 @@ async decrypt(cryptos){
     let found = false;
     for (var i = 1; i <= this.state.exchangesCounter; i++) {
       let exchange = await this.state.factory.methods.exchangedatas(i).call()
-      if (exchange == _address)
+      if (exchange === _address)
       {
         found = true
         this.setState({addrescontract: _address});
@@ -493,7 +595,7 @@ async decrypt(cryptos){
         <div>
           
 
-          {this.state.addrescontract==''? this.shownewexchange(): <p>already have a SC address</p>}
+          {this.state.addrescontract===''? this.shownewexchange(): <p>already have a SC address</p>}
 
           <Form >
           <Form.Group controlId="createnewcontract" >

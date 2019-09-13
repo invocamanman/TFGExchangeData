@@ -110,6 +110,11 @@ export const FACTORY_ABI =[
     "type": "constructor"
   },
   {
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "fallback"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -313,6 +318,11 @@ export const EXCHANGEDATA_ABI =[
     "payable": true,
     "stateMutability": "payable",
     "type": "constructor"
+  },
+  {
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "fallback"
   },
   {
     "anonymous": false,

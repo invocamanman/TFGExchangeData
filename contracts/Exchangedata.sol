@@ -93,11 +93,12 @@ uint public lasttimestamp = now;
 
       if(seedroot==MRK){
          emit refund(false);
-         selfdestruct(consumer);
+         consumer.transfer(collateral);
+         selfdestruct(provider);
       }
       else
         emit refund(true);
-        selfdestruct(provider);
+        selfdestruct(consumer);
       //tengo que comproar la seed es correcta con la markle prrof de las keys, =?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿?¿? semilla+i hash ( me salen 10 claves)
     }
 
@@ -116,12 +117,13 @@ uint public lasttimestamp = now;
        require(stage == Stages.WaitForMR || stage == Stages.WaitforConfirm, "Must be in that states");
        if(msg.sender == provider)
        {
-       consumer.transfer(collateral+mul(n,p));
-       selfdestruct(provider);//??
+       consumer.transfer(p);
+       selfdestruct(address(this));//burn ether
        }
        if(msg.sender == consumer)
        {
-       selfdestruct(provider);
+       consumer.transfer(p);
+       selfdestruct(address(this));//burn ether
        }
      }
 
@@ -129,11 +131,9 @@ uint public lasttimestamp = now;
         stage = Stages(uint(stage) + 1);
         lasttimestamp = now;
     }
-
     function Refund() internal {
-        
+        selfdestruct(consumer);
     }
-
 
 //save math
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -185,4 +185,6 @@ uint public lasttimestamp = now;
         }
         return tree.computeRoot();
     }
+
+    function() external payable {}//fallback
 }

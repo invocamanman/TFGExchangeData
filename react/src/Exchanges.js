@@ -11,7 +11,8 @@ class Exchanges extends Component {
         //tasks: [] onmount creo
          textboxvalue: '',
          unselected: true,
-         address:''
+         address:'',
+         indexposted: false
           }
          this.indexFile = React.createRef();
          this.FileCryptos = React.createRef();
@@ -25,31 +26,47 @@ class Exchanges extends Component {
 
   Postindex(event) {
     event.preventDefault();
-    console.log(this.indexFile.current.files[0])
-    var reader = new FileReader();
-    reader.onload = function(event) {
-      // console.log(JSON.parse(event.target.result))
-      // console.log(JSON.stringify(JSON.parse(event.target.result)))
-      fetch("http://localhost:9000/testAPI/index",{
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(JSON.parse(event.target.result))//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-      }).then(function(response) {
-    
-        return response.json();//.json()
-      }).then(function(data) {
-        console.log(data)
-        var blob = new Blob([JSON.stringify(data)], {type: "text/plain;charset=utf-8"});
-        FileSaver.saveAs(blob, "keysYproofs.txt"); 
-      });
-    
+    if (this.state.indexposted===false){
+      if (this.indexFile.current.files[0] == null){
+        window.alert("Debes itroducir los ficheros de indices primero")
+        return
+      }
+      else{
+
       
-    };
-  
-    reader.readAsText(this.indexFile.current.files[0]);
+    
+        event.preventDefault();
+        console.log(this.indexFile.current.files[0])
+        var reader = new FileReader();
+        reader.onload = function(event) {
+          // console.log(JSON.parse(event.target.result))
+          // console.log(JSON.stringify(JSON.parse(event.target.result)))
+          fetch("http://localhost:9000/testAPI/index",{
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(JSON.parse(event.target.result))//, {a:1, b:2}... // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+          }).then(function(response) {
+        
+            return response.json();//.json()
+          }).then(function(data) {
+            console.log(data)
+            var blob = new Blob([JSON.stringify(data)], {type: "text/plain;charset=utf-8"});
+            FileSaver.saveAs(blob, "keysYproofs.txt"); 
+          });
+        
+          
+        };
+      
+        reader.readAsText(this.indexFile.current.files[0]);
+        this.setState({indexposted: true})
+      }
+    }
+    else{
+      window.alert("Ya has pedido la muestra gratuita al proveedor")
+    }
   }
   readFile(file){
       return new Promise((resolve,reject) => {
@@ -66,18 +83,23 @@ class Exchanges extends Component {
   Comprobe(event) {
     event.preventDefault();
 
-    
-    console.log(this.FileCryptos.current.files[0])
-    console.log(this.FilePIK.current.files[0])
-    
-    let promisesread = [this.readFile(this.FileCryptos.current.files[0]), this.readFile(this.FilePIK.current.files[0]), this.readFile(this.indexFile.current.files[0])]
+    if ((this.FileCryptos.current.files[0]==null)||(this.FilePIK.current.files[0]==null)||(this.indexFile.current.files[0]== null)){
+      window.alert("Debes itroducir los ficheros de cryptobloques, (claves y proofs) y índices para poder activar esta función")
+    }
+    else{
 
- 
-    Promise.all(promisesread).then((results) => {
-        console.log(results)
-        this.props.comprobe(results[0].cryptoleafs, results[1].keys, results[1].proofs, results[2].index)
-    });
-          
+      
+      console.log(this.FileCryptos.current.files[0])
+      console.log(this.FilePIK.current.files[0])
+      
+      let promisesread = [this.readFile(this.FileCryptos.current.files[0]), this.readFile(this.FilePIK.current.files[0]), this.readFile(this.indexFile.current.files[0])]
+
+  
+      Promise.all(promisesread).then((results) => {
+          console.log(results)
+          this.props.comprobe(results[0].cryptoleafs, results[1].keys, results[1].proofs, results[2].index)
+      });
+    }
   }
 
   Decrypt(event) {
@@ -101,9 +123,22 @@ class Exchanges extends Component {
       <p>current address selected: {this.props.addrescontract}</p>
       <p>current stage selected: {this.props.stage}</p>
       <form>
-            <button type="button" onClick={() => this.props.Startcomunication()}>
+            <Button type="button" onClick={() => this.props.Startcomunication()}>
               Startcomunication
-              </button>
+              </Button>
+              <br />
+            Or you can cancel the deal
+            <br />
+            <Button type="button" variant="danger" onClick={() => this.props.Cancel()}>
+              Cancel
+              </Button>
+              <br />
+              <br />
+              For Demo purposes
+              <br />
+              <Button type="button" variant="warning" onClick={() => this.props.Startcomunicationfake()}>
+              StartBadComunnication
+              </Button>
       </form> 
       </div>
       case 1:
@@ -119,7 +154,7 @@ class Exchanges extends Component {
                     File of index format: ej: 1,2,3,1,2,3 
                     <br />
                     if you want we create a random indexes for you ^^
-                    <Button type="button" onClick={this.CreateRandomIndex}>
+                    <Button type="button" onClick={this.props.CreateRandomIndex}>
                      CreateRandomIndex
                     </Button>
                     <input type="file" ref={this.indexFile} />
@@ -145,24 +180,36 @@ class Exchanges extends Component {
               </form>
 
 
-
-                <button type="button" onClick={() => this.props.confirm()}>
+              If you agree with the data you cna confirm the payment
+              <br />
+                <Button type="button" variant="success" onClick={() => this.props.confirm()}>
               confirm
-              </button>
-
-              
+              </Button>
+              <br />
+            Or you can cancel it
+            <br />
+            <Button type="button" variant="danger" onClick={() => this.props.Cancel()}>
+              Cancel
+              </Button>
             </div>
-            break;
+           
       case 2:
           return <div>
               <p>current address selected: {this.props.addrescontract}</p>
               <p>current stage selected: {this.props.stage}</p>
               <p>Waiting for seed {this.props.stage}</p>
-              <button type="button" onClick={() => this.props.seedReveal()}>
+              <Button type="button" onClick={() => this.props.seedReveal()}>
               reveal me the seed!
-              </button>
+              </Button>
+              <br />
+              <br />
+              For Demo purposes
+              <br />
+              <Button type="button" variant="warning" onClick={() => this.props.seedRevealFake()}>
+              RevealFakeSeed
+              </Button>
           </div>
-          break;
+         
     case 3:
     return <div>
         <p>current address selected: {this.props.addrescontract}</p>
@@ -185,9 +232,9 @@ class Exchanges extends Component {
       </button>
 
     </div>
-      break;
+      
     default:
-      return  <p>po esto es el defaul</p>
+      return  <p>Intercambio de datos finalizado, contrato inservible </p>
     }
   }textboxvalue
   render() {
@@ -195,7 +242,7 @@ class Exchanges extends Component {
          <div id="content">
    
 
-              {(this.props.addrescontract!='')?this.loadExchanges():this.props.addrescontract}
+              {(this.props.addrescontract!=='')?this.loadExchanges():this.props.addrescontract}
 
 
                 </div>

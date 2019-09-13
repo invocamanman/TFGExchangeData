@@ -262,6 +262,11 @@ exports.FACTORY_ABI =[
     "type": "constructor"
   },
   {
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "fallback"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -465,6 +470,11 @@ exports.Exchangedata_ABI =[
     "payable": true,
     "stateMutability": "payable",
     "type": "constructor"
+  },
+  {
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "fallback"
   },
   {
     "anonymous": false,
